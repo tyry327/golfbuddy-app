@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from "react-multi-date-picker";
 import './App.css';
 
@@ -15,6 +15,7 @@ function App() {
   const [selectedDates, setSelectedDates] = useState([]);
   const [friendEmail, setFriendEmail] = useState('');
   const [dateSections, setDateSections] = useState({});
+  const [userAvailability, setUserAvailability] = useState([]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -56,6 +57,7 @@ function App() {
         setUserId(data.userId);
         setMessage('Login successful!');
         setView('dashboard');
+        fetchAvailability();
       } else {
         setMessage(data.message || 'Login failed.');
       }
@@ -128,9 +130,27 @@ function App() {
         setMessage(data.message || 'Failed to find matches.');
       }
     } catch {
-      setMessage('Network error.here');
+      setMessage('Network error.');
     }
   };
+
+  const fetchAvailability = async () => {
+    try {
+      const res = await fetch(`${API_URL}/availability/${userId}`);
+      const data = await res.json();
+      if (res.ok && data.availability) {
+        setUserAvailability(data.availability);
+      }
+    } catch {
+      // Optionally handle error
+    }
+  };
+
+  useEffect(() => {
+    if (userId) {
+      fetchAvailability();
+    }
+  }, [userId]);
 
   return (
     <div style={{ maxWidth: 400, margin: '40px auto', fontFamily: 'sans-serif' }}>
@@ -225,6 +245,30 @@ function App() {
               </ul>
             </div>
           )}
+          {userAvailability.length > 0 && (
+            <div>
+              <h3>Your Saved Availability</h3>
+              <ul>
+                {userAvailability.map((a, idx) => (
+                  <li key={idx}>
+                    {a.date ? new Date(a.date).toISOString().split('T')[0] : a.date}:
+                    {a.sections && a.sections.length > 0
+                      ? ` ${a.sections.join(', ')}`
+                      : ' (no sections selected)'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <hr />
+          <a
+            href="https://www.golfnow.com/tee-times/search?location=80134"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'block', margin: '20px 0', textAlign: 'center', fontSize: '1.2em', color: '#007bff' }}
+          >
+            Search Tee Times Near 80134 on GolfNow
+          </a>
         </div>
       )}
     </div>

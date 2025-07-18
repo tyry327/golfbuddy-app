@@ -4,6 +4,19 @@ import './App.css';
 
 const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api';
 const SECTIONS = ['morning', 'midday', 'afternoon', 'evening'];
+const SECTION_TIME_RANGES = {
+  morning:   { timemin: 6,  timemax: 10 },
+  midday:    { timemin: 11, timemax: 13 },
+  afternoon: { timemin: 14, timemax: 16 },
+  evening:   { timemin: 17, timemax: 20 }
+};
+
+function formatGolfNowDate(dateStr) {
+  // Converts "YYYY-MM-DD" to "Mon+DD+YYYY" (e.g., "Jul+23+2025")
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const [year, month, day] = dateStr.split("-");
+  return `${months[parseInt(month, 10) - 1]}+${parseInt(day, 10)}+${year}`;
+}
 
 function App() {
   const [view, setView] = useState('login');
@@ -16,6 +29,7 @@ function App() {
   const [friendEmail, setFriendEmail] = useState('');
   const [dateSections, setDateSections] = useState({});
   const [userAvailability, setUserAvailability] = useState([]);
+  const [searchZip, setSearchZip] = useState('80134');
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -150,6 +164,7 @@ function App() {
     if (userId) {
       fetchAvailability();
     }
+    // eslint-disable-next-line
   }, [userId]);
 
   return (
@@ -239,10 +254,39 @@ function App() {
               <ul>
                 {matches.map(match => (
                   <li key={match.date}>
-                    {match.date}: {match.sections.join(', ')}
+                    {match.date}:{" "}
+                    {match.sections.map(section => {
+                      const range = SECTION_TIME_RANGES[section];
+                      const hashParams = [
+                        `date=${formatGolfNowDate(match.date)}`,
+                        `location=${encodeURIComponent(searchZip)}`
+                      ];
+                      if (range) {
+                        hashParams.push(`timemin=${range.timemin}`);
+                        hashParams.push(`timemax=${range.timemax}`);
+                      }
+                      const url = `https://www.golfnow.com/tee-times/search#${hashParams.join("&")}`;
+                      return (
+                        <span key={section} style={{ marginRight: 12 }}>
+                          {section}
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ marginLeft: 6, color: '#007bff', fontSize: '0.95em' }}
+                            title="GolfNow link will pre-fill date and time, but may require manual adjustment."
+                          >
+                            View Tee Times
+                          </a>
+                        </span>
+                      );
+                    })}
                   </li>
                 ))}
               </ul>
+              <div style={{ fontSize: '0.9em', color: '#888', marginTop: 8 }}>
+                * GolfNow may not always honor all filters from the link. Please double-check date and time on their site.
+              </div>
             </div>
           )}
           {userAvailability.length > 0 && (
@@ -261,13 +305,25 @@ function App() {
             </div>
           )}
           <hr />
+          <div style={{ margin: '20px 0' }}>
+            <label>
+              Enter Zip Code:{' '}
+              <input
+                type="text"
+                value={searchZip}
+                onChange={e => setSearchZip(e.target.value)}
+                maxLength={10}
+                style={{ width: 100 }}
+              />
+            </label>
+          </div>
           <a
-            href="https://www.golfnow.com/tee-times/search?location=80134"
+            href={`https://www.golfnow.com/tee-times/search?location=${encodeURIComponent(searchZip)}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ display: 'block', margin: '20px 0', textAlign: 'center', fontSize: '1.2em', color: '#007bff' }}
           >
-            Search Tee Times Near 80134 on GolfNow
+            Search Tee Times Near {searchZip || 'your zip'} on GolfNow
           </a>
         </div>
       )}

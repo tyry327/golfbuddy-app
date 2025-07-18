@@ -5,10 +5,10 @@ import './App.css';
 const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api';
 const SECTIONS = ['morning', 'midday', 'afternoon', 'evening'];
 const SECTION_TIME_RANGES = {
-  morning:   { timemin: 6,  timemax: 10 },
-  midday:    { timemin: 11, timemax: 13 },
-  afternoon: { timemin: 14, timemax: 16 },
-  evening:   { timemin: 17, timemax: 20 }
+  morning:   { timemin: 12,  timemax: 20 },
+  midday:    { timemin: 20, timemax: 28 },
+  afternoon: { timemin: 28, timemax: 34 },
+  evening:   { timemin: 34, timemax: 40 }
 };
 
 function formatGolfNowDate(dateStr) {
@@ -16,6 +16,20 @@ function formatGolfNowDate(dateStr) {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const [year, month, day] = dateStr.split("-");
   return `${months[parseInt(month, 10) - 1]}+${parseInt(day, 10)}+${year}`;
+}
+
+async function getCoordsForZip(zip) {
+  try {
+    const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    const place = data.places && data.places[0];
+    return place
+      ? { latitude: place.latitude, longitude: place.longitude }
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 function App() {
@@ -30,6 +44,13 @@ function App() {
   const [dateSections, setDateSections] = useState({});
   const [userAvailability, setUserAvailability] = useState([]);
   const [searchZip, setSearchZip] = useState('80134');
+  const [zipCoords, setZipCoords] = useState({});
+
+  useEffect(() => {
+    if (searchZip && searchZip.length >= 5) {
+      getCoordsForZip(searchZip).then(setZipCoords);
+    }
+  }, [searchZip]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -258,13 +279,25 @@ function App() {
                     {match.sections.map(section => {
                       const range = SECTION_TIME_RANGES[section];
                       const hashParams = [
+                        `qc=GeoLocation`,
+                        `q=${encodeURIComponent(searchZip)}`,
+                        `facilitytype=0`,
+                        `sortby=Facilities.Distance.0`,
+                        `view=Course`,
                         `date=${formatGolfNowDate(match.date)}`,
-                        `location=${encodeURIComponent(searchZip)}`
-                      ];
-                      if (range) {
-                        hashParams.push(`timemin=${range.timemin}`);
-                        hashParams.push(`timemax=${range.timemax}`);
-                      }
+                        `holes=3`,
+                        `radius=30`,
+                        range ? `timemax=${range.timemax}` : '',
+                        range ? `timemin=${range.timemin}` : '',
+                        `players=0`,
+                        `pricemax=10000`,
+                        `pricemin=0`,
+                        `promotedcampaignsonly=false`,
+                        `hotdealsonly=false`,
+                        zipCoords.longitude && zipCoords.latitude ? `longitude=${zipCoords.longitude}` : '',
+                        zipCoords.longitude && zipCoords.latitude ? `latitude=${zipCoords.latitude}` : ''
+                      ].filter(Boolean);
+
                       const url = `https://www.golfnow.com/tee-times/search#${hashParams.join("&")}`;
                       return (
                         <span key={section} style={{ marginRight: 12 }}>

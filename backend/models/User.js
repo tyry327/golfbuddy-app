@@ -7,7 +7,8 @@ const UserSchema = new mongoose.Schema({
   availability: [{
     date: { type: Date, required: true },
     sections: [{ type: String, enum: ['morning', 'midday', 'afternoon', 'evening'] }]
-  }]
+  }],
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 });
 
 module.exports = mongoose.model('User', UserSchema);

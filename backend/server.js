@@ -20,10 +20,6 @@ app.use('/api/auth', authRoutes);
 const availabilityRoutes = require('./routes/availability');
 app.use('/api/availability', availabilityRoutes);
 
-// Import and use friends routes
-const friendsRouter = require('./routes/friends');
-app.use('/api/friends', friendsRouter);
-
 // Test route
 app.get('/', (req, res) => {
   res.send('GolfBuddy API is running!');

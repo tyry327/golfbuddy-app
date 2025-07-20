@@ -27,7 +27,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import GolfCourseIcon from '@mui/icons-material/GolfCourse';
 import UserProfile from './components/UserProfile';
 
-const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api'; // Update if your backend runs elsewhere
+const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api';
 const SECTIONS = ['morning', 'midday', 'afternoon', 'evening'];
 const SECTION_TIME_RANGES = {
   morning:   { timemin: 12,  timemax: 20 },
@@ -59,9 +59,7 @@ async function getCoordsForZip(zip) {
 function App() {
   const [token, setToken] = useState(() => localStorage.getItem('golfbuddy_token') || '');
   const [userId, setUserId] = useState(() => localStorage.getItem('golfbuddy_userId') || '');
-  const [view, setView] = useState(() =>
-    (localStorage.getItem('golfbuddy_token') && localStorage.getItem('golfbuddy_userId')) ? 'dashboard' : 'login'
-  );
+  const [view, setView] = useState(() => (localStorage.getItem('golfbuddy_token') && localStorage.getItem('golfbuddy_userId')) ? 'dashboard' : 'login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [message, setMessage] = useState('');
   const [matches, setMatches] = useState([]);
@@ -72,7 +70,7 @@ function App() {
   const [searchZip, setSearchZip] = useState('80134');
   const [zipCoords, setZipCoords] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', text: '' });
-  const [friends, setFriends] = useState([]);
+  const [profile, setProfile] = useState({ name: '', email: '' });
 
   useEffect(() => {
     if (searchZip && searchZip.length >= 5) {
@@ -80,23 +78,21 @@ function App() {
     }
   }, [searchZip]);
 
-  // Fetch friends from backend
+  // Fetch user profile from backend when userId changes (after login/refresh)
   useEffect(() => {
-    const fetchFriends = async () => {
+    const fetchProfile = async () => {
       if (!userId) return;
       try {
-        const res = await fetch(`${API_URL}/friends/${userId}`);
+        const res = await fetch(`${API_URL}/auth/profile/${userId}`);
         const data = await res.json();
-        if (res.ok && data.friends) {
-          setFriends(data.friends);
-        } else {
-          setFriends([]);
+        if (res.ok && data.user) {
+          setProfile({ name: data.user.name, email: data.user.email });
+          setForm(f => ({ ...f, name: data.user.name, email: data.user.email }));
         }
-      } catch {
-        setFriends([]);
-      }
+      } catch {}
     };
-    fetchFriends();
+    fetchProfile();
+    // eslint-disable-next-line
   }, [userId]);
 
   const handleChange = e => {
@@ -205,64 +201,15 @@ function App() {
     }
   };
 
-  // Add friend (by name or email)
-  const handleAddFriend = async (identifier) => {
-    if (!identifier) return;
-    try {
-      const res = await fetch(`${API_URL}/friends/add`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, friendIdentifier: identifier })
-      });
-      const data = await res.json();
-      if (res.ok && data.friend) {
-        setFriends(prev => [...prev, data.friend]);
-        setSnackbar({ open: true, severity: 'success', text: `Added friend: ${data.friend.name}` });
-      } else {
-        setSnackbar({ open: true, severity: 'error', text: data.message || 'Could not add friend.' });
-      }
-    } catch {
-      setSnackbar({ open: true, severity: 'error', text: 'Network error.' });
-    }
-  };
-
-  // Remove friend
-  const handleRemoveFriend = async (friend) => {
-    if (!friend || !friend.id) return;
-    try {
-      const res = await fetch(`${API_URL}/friends/remove`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, friendId: friend.id })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setFriends(prev => prev.filter(f => f.id !== friend.id));
-        setSnackbar({ open: true, severity: 'info', text: `Removed friend: ${friend.name}` });
-      } else {
-        setSnackbar({ open: true, severity: 'error', text: data.message || 'Could not remove friend.' });
-      }
-    } catch {
-      setSnackbar({ open: true, severity: 'error', text: 'Network error.' });
-    }
-  };
-
-  // When searching for matches, allow searching by friend name:
   const findMatchesByEmail = async e => {
     e.preventDefault();
     setMessage('');
     setMatches([]);
-    let emailToSearch = friendEmail;
-    // If user typed a friend's name, look up their email
-    const friendObj = friends.find(f => f.name.toLowerCase() === friendEmail.toLowerCase());
-    if (friendObj && friendObj.email) {
-      emailToSearch = friendObj.email;
-    }
     try {
       const res = await fetch(`${API_URL}/availability/match-by-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, friendEmail: emailToSearch }),
+        body: JSON.stringify({ userId, friendEmail }),
       });
       const data = await res.json();
       if (res.ok && data.matches && data.matches.length > 0) {
@@ -289,24 +236,18 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    if (userId) {
-      fetchAvailability();
-    }
-    // eslint-disable-next-line
-  }, [userId]);
-
-  // Replace your handleProfileSave with this version:
-  const handleProfileSave = async (newForm) => {
+  // Save profile changes
+  const handleProfileSave = async (newProfile) => {
     try {
-      const res = await fetch(`${API_URL}/profile/update`, {
+      const res = await fetch(`${API_URL}/auth/profile/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, name: newForm.name, email: newForm.email })
+        body: JSON.stringify({ userId, name: newProfile.name, email: newProfile.email })
       });
       const data = await res.json();
       if (res.ok && data.user) {
-        setForm({ ...form, name: data.user.name, email: data.user.email });
+        setProfile({ name: data.user.name, email: data.user.email });
+        setForm(f => ({ ...f, name: data.user.name, email: data.user.email }));
         setSnackbar({ open: true, severity: 'success', text: 'Profile updated!' });
       } else {
         setSnackbar({ open: true, severity: 'error', text: data.message || 'Profile update failed.' });
@@ -316,19 +257,10 @@ function App() {
     }
   };
 
-  // Fetch user profile from backend when userId changes (after login/refresh)
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!userId) return;
-      try {
-        const res = await fetch(`${API_URL}/auth/profile/${userId}`);
-        const data = await res.json();
-        if (res.ok && data.user) {
-          setForm(f => ({ ...f, name: data.user.name, email: data.user.email }));
-        }
-      } catch {}
-    };
-    fetchProfile();
+    if (userId) {
+      fetchAvailability();
+    }
     // eslint-disable-next-line
   }, [userId]);
 
@@ -755,12 +687,9 @@ function App() {
               <Box>
                 <UserProfile
                   userId={userId}
-                  form={form}
-                  setForm={setForm}
+                  form={profile}
+                  setForm={setProfile}
                   onSave={handleProfileSave}
-                  friends={friends}
-                  onAddFriend={handleAddFriend}
-                  onRemoveFriend={handleRemoveFriend}
                 />
                 <Button
                   variant="outlined"

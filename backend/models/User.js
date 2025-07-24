@@ -8,6 +8,7 @@ const UserSchema = new mongoose.Schema({
     date: { type: Date, required: true },
     sections: [{ type: String, enum: ['morning', 'midday', 'afternoon', 'evening'] }]
   }]
+  // friends field removed
 });
 
 module.exports = mongoose.model('User', UserSchema);

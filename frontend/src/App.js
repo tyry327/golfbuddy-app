@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DatePicker from "react-multi-date-picker";
 import './App.css';
-
-// MUI imports
 import {
   Container,
   Card,
@@ -16,15 +14,14 @@ import {
   Box,
   List,
   ListItem,
-  ListItemText,
   Chip,
   Stack,
   Grid,
 } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import GolfCourseIcon from '@mui/icons-material/GolfCourse';
+import UserProfile from './components/UserProfile';
 
 const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api';
 const SECTIONS = ['morning', 'midday', 'afternoon', 'evening'];
@@ -60,7 +57,6 @@ function App() {
   const [userId, setUserId] = useState(() => localStorage.getItem('golfbuddy_userId') || '');
   const [view, setView] = useState(() => (localStorage.getItem('golfbuddy_token') && localStorage.getItem('golfbuddy_userId')) ? 'dashboard' : 'login');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
-  const [message, setMessage] = useState('');
   const [matches, setMatches] = useState([]);
   const [selectedDates, setSelectedDates] = useState([]);
   const [friendEmail, setFriendEmail] = useState('');
@@ -69,6 +65,7 @@ function App() {
   const [searchZip, setSearchZip] = useState('80134');
   const [zipCoords, setZipCoords] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', text: '' });
+  const [profile, setProfile] = useState({ name: '', email: '' });
 
   useEffect(() => {
     if (searchZip && searchZip.length >= 5) {
@@ -76,13 +73,28 @@ function App() {
     }
   }, [searchZip]);
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!userId) return;
+      try {
+        const res = await fetch(`${API_URL}/auth/profile/${userId}`);
+        const data = await res.json();
+        if (res.ok && data.user) {
+          setProfile({ name: data.user.name, email: data.user.email });
+          setForm(f => ({ ...f, name: data.user.name, email: data.user.email }));
+        }
+      } catch {}
+    };
+    fetchProfile();
+    // eslint-disable-next-line
+  }, [userId]);
+
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const register = async e => {
     e.preventDefault();
-    setMessage('');
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -103,7 +115,6 @@ function App() {
 
   const login = async e => {
     e.preventDefault();
-    setMessage('');
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
@@ -159,7 +170,6 @@ function App() {
 
   const setAvail = async e => {
     e.preventDefault();
-    setMessage('');
     try {
       const availability = selectedDates.map(d => ({
         date: d.format("YYYY-MM-DD"),
@@ -184,7 +194,6 @@ function App() {
 
   const findMatchesByEmail = async e => {
     e.preventDefault();
-    setMessage('');
     setMatches([]);
     try {
       const res = await fetch(`${API_URL}/availability/match-by-email`, {
@@ -212,8 +221,26 @@ function App() {
       if (res.ok && data.availability) {
         setUserAvailability(data.availability);
       }
+    } catch {}
+  };
+
+  const handleProfileSave = async (newProfile) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/profile/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, name: newProfile.name, email: newProfile.email })
+      });
+      const data = await res.json();
+      if (res.ok && data.user) {
+        setProfile({ name: data.user.name, email: data.user.email });
+        setForm(f => ({ ...f, name: data.user.name, email: data.user.email }));
+        setSnackbar({ open: true, severity: 'success', text: 'Profile updated!' });
+      } else {
+        setSnackbar({ open: true, severity: 'error', text: data.message || 'Profile update failed.' });
+      }
     } catch {
-      // Optionally handle error
+      setSnackbar({ open: true, severity: 'error', text: 'Network error.' });
     }
   };
 
@@ -298,7 +325,17 @@ function App() {
                   Welcome!
                 </Typography>
                 <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
-                  <Button variant="outlined" size="small" color="secondary" onClick={handleLogout}>Log out</Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                    onClick={() => setView('profile')}
+                  >
+                    Profile
+                  </Button>
+                  <Button variant="outlined" size="small" color="secondary" onClick={handleLogout}>
+                    Log out
+                  </Button>
                 </Stack>
                 <Divider sx={{ mb: 2 }} />
                 <Card sx={{ mb: 2, background: '#f1f8e9', borderRadius: 2 }}>
@@ -356,7 +393,7 @@ function App() {
                     <Box component="form" onSubmit={findMatchesByEmail} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                       <TextField
                         type="email"
-                        label="Friend's Email"
+                        label="Other Player's Email"
                         value={friendEmail}
                         onChange={e => setFriendEmail(e.target.value)}
                         required
@@ -395,7 +432,7 @@ function App() {
                             sx={{
                               flexDirection: 'column',
                               alignItems: 'flex-start',
-                              mb: 3, // Increased margin between days
+                              mb: 3,
                               p: 2,
                               border: '1px solid #b2dfdb',
                               borderRadius: 2,
@@ -610,27 +647,26 @@ function App() {
                     </CardContent>
                   </Card>
                 )}
-                {/* User info at the bottom, subtle style */}
-                <Box sx={{ mt: 3, mb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.6 }}>
-                  <Stack spacing={1} direction="row">
-                    <Chip
-                      icon={<LocationOnIcon />}
-                      label={`User ID: ${userId}`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ bgcolor: '#f5f5f5', color: '#888' }}
-                    />
-                    <Chip
-                      label={token ? `Token: ${token.slice(0, 8)}...` : ''}
-                      size="small"
-                      variant="outlined"
-                      sx={{ bgcolor: '#f5f5f5', color: '#888' }}
-                    />
-                  </Stack>
-                </Box>
                 <Box sx={{ textAlign: 'center', mt: 4, color: 'forestgreen', fontWeight: 500, fontSize: 18 }}>
                   ⛳ Happy Golfing with GolfBuddy!
                 </Box>
+              </Box>
+            )}
+            {view === 'profile' && (
+              <Box>
+                <UserProfile
+                  userId={userId}
+                  form={profile}
+                  setForm={setProfile}
+                  onSave={handleProfileSave}
+                />
+                <Button
+                  variant="outlined"
+                  sx={{ mt: 2 }}
+                  onClick={() => setView('dashboard')}
+                >
+                  Back to Dashboard
+                </Button>
               </Box>
             )}
           </CardContent>

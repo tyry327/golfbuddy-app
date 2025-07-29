@@ -13,7 +13,7 @@ router.post('/register', async (req, res) => {
     if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword });
+    const user = new User({ name, email: email.toLowerCase(), password: hashedPassword }); // <-- Convert email to lowercase
     await user.save();
 
     res.status(201).json({ message: 'User registered' });
@@ -26,7 +26,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() }); // <-- Convert email to lowercase
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -57,7 +57,7 @@ router.post('/profile/update', async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
     user.name = name || user.name;
-    user.email = email || user.email;
+    user.email = email ? email.toLowerCase() : user.email; // <-- Convert email to lowercase
     await user.save();
     res.json({ message: 'Profile updated', user: { name: user.name, email: user.email } });
   } catch (err) {

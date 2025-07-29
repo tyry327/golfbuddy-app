@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   availability: [{
-    date: { type: Date, required: true },
+    date: { type: String, required: true }, // Store as 'YYYY-MM-DD'
     sections: [{ type: String, enum: ['morning', 'midday', 'afternoon', 'evening'] }]
   }]
   // friends field removed

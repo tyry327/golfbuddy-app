@@ -59,13 +59,13 @@ function App() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [matches, setMatches] = useState([]);
   const [selectedDates, setSelectedDates] = useState([]);
-  const [friendEmail, setFriendEmail] = useState('');
   const [dateSections, setDateSections] = useState({});
   const [userAvailability, setUserAvailability] = useState([]);
-  const [searchZip, setSearchZip] = useState('80134');
+  const [searchZip, setSearchZip] = useState('');
   const [zipCoords, setZipCoords] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'info', text: '' });
   const [profile, setProfile] = useState({ name: '', email: '' });
+  const [groupEmails, setGroupEmails] = useState(''); // For group/single matching
 
   useEffect(() => {
     if (searchZip && searchZip.length >= 5) {
@@ -192,14 +192,23 @@ function App() {
     }
   };
 
-  const findMatchesByEmail = async e => {
+  // Unified group/single matching handler
+  const findGroupMatches = async e => {
     e.preventDefault();
     setMatches([]);
+    const emails = groupEmails
+      .split(',')
+      .map(email => email.trim())
+      .filter(email => email.length > 0);
+    if (emails.length === 0) {
+      setSnackbar({ open: true, severity: 'error', text: 'Please enter at least one email.' });
+      return;
+    }
     try {
-      const res = await fetch(`${API_URL}/availability/match-by-email`, {
+      const res = await fetch(`${API_URL}/availability/match-group`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, friendEmail }),
+        body: JSON.stringify({ userId, emails }),
       });
       const data = await res.json();
       if (res.ok && data.matches && data.matches.length > 0) {
@@ -389,14 +398,22 @@ function App() {
                 </Card>
                 <Card sx={{ mb: 2, background: '#f1f8e9', borderRadius: 2 }}>
                   <CardContent>
-                    <Typography variant="h6" sx={{ color: 'forestgreen', fontWeight: 600 }}>Find Matching Dates</Typography>
-                    <Box component="form" onSubmit={findMatchesByEmail} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+                    <Typography variant="h6" sx={{ color: 'forestgreen', fontWeight: 600 }}>
+                      Find Matching Dates
+                    </Typography>
+                    <Box
+                      component="form"
+                      onSubmit={findGroupMatches}
+                      sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+                    >
                       <TextField
-                        type="email"
-                        label="Other Player's Email"
-                        value={friendEmail}
-                        onChange={e => setFriendEmail(e.target.value)}
+                        label="Player Email(s)"
+                        value={groupEmails}
+                        onChange={e => setGroupEmails(e.target.value)}
+                        placeholder="Enter one or more emails, separated by commas"
+                        multiline
                         required
+                        InputLabelProps={{ shrink: true }} // <-- Add this line
                       />
                       <TextField
                         label="Enter Zip Code"
@@ -405,16 +422,23 @@ function App() {
                         inputProps={{ maxLength: 10 }}
                         sx={{ width: 180 }}
                       />
-                      <Button type="submit" variant="contained" sx={{
-                        background: '#388e3c',
-                        color: '#fff',
-                        fontWeight: 600,
-                        border: '2px solid #2e7031',
-                        textTransform: 'none',
-                        '&:hover': { background: '#2e7031' }
-                      }}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        sx={{
+                          background: '#1976d2',
+                          color: '#fff',
+                          fontWeight: 600,
+                          border: '2px solid #1565c0',
+                          textTransform: 'none',
+                          '&:hover': { background: '#1565c0' }
+                        }}
+                      >
                         Find Matches
                       </Button>
+                      <Typography variant="caption" color="text.secondary">
+                        Enter one email to match with a single player, or multiple emails (comma separated) to find common availability for a group.
+                      </Typography>
                     </Box>
                   </CardContent>
                 </Card>

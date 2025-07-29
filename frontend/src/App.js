@@ -23,7 +23,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import GolfCourseIcon from '@mui/icons-material/GolfCourse';
 import UserProfile from './components/UserProfile';
 
-const API_URL = 'https://glorious-orbit-jj4jpg5vwp4hpgjx-5000.app.github.dev/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 const SECTIONS = ['morning', 'midday', 'afternoon', 'evening'];
 const SECTION_TIME_RANGES = {
   morning:   { timemin: 12,  timemax: 20 },
